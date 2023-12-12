@@ -14,22 +14,36 @@
    <string>Widget</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QPushButton" name="pushButton">
-     <property name="text">
-      <string>爬取歌曲</string>
-     </property>
-    </widget>
-   </item>
-   <item row="0" column="1">
-    <widget class="QPushButton" name="pushButton_2">
+   <item row="2" column="1">
+    <widget class="QPushButton" name="pushButton_close">
      <property name="text">
       <string>关闭窗口</string>
      </property>
     </widget>
    </item>
-   <item row="1" column="0" colspan="2">
+   <item row="4" column="0" colspan="2">
     <widget class="QTextEdit" name="textEdit"/>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="pushButton_crawler">
+     <property name="text">
+      <string>爬取歌曲</string>
+     </property>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>状态</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="2">
+    <widget class="QLineEdit" name="lineEdit_song">
+     <property name="placeholderText">
+      <string>搜索歌曲</string>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>
