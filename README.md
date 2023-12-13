@@ -1,7 +1,14 @@
 # crawlerMusic
+
+Qt 5.12.2
+python3.6.5
+
+
 爬取歌曲
 使用方法:
-python3 crawlerMusic.py
+python3 widget.py
+或使用Qt运行
+
 # 说明
 爬取在线音乐的歌曲信息，保存到本地。
 # 依赖
