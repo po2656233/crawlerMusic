@@ -70,6 +70,13 @@ def checkMp3File(fileStr):
 #    return False
 
 
+def getDataUrl(url):
+    with requests.get(url, headers=headers) as response:
+        if response.status_code == 200:
+            return response
+        else:
+            return None
+
 class Widget(QWidget):
     def __init__(self):
         super(Widget, self).__init__()
@@ -100,7 +107,7 @@ class Widget(QWidget):
         self.showInfo("第"+str(self.index)+"次,获取歌曲地址")
         host = "https://www.kugou.com/yy/rank/home/"
         url = host+"{}-8888.html".format(self.index)
-        web_data = requests.get(url, headers=headers)
+        web_data = getDataUrl(url)
         soup = BeautifulSoup(web_data.text, 'lxml')
         ranks = soup.select('span.pc_temp_num')
         titles = soup.select('div.pc_temp_songlist > ul > li > a')
@@ -137,7 +144,7 @@ class Widget(QWidget):
         if songname == "":
             return
         url = "http://music.163.com/api/search/get/web?type=1&offset=0&total=true&limit=100&s=" + songname;
-        r = requests.get(url)
+        r = getDataUrl(url)
         webdata = r.json()
         if len(webdata) == 0:
             return
@@ -182,7 +189,7 @@ class Widget(QWidget):
 
     def load_ui(self):
         loader = QUiLoader()
-        path = os.fspath(Path(__file__).resolve().parent / "form.ui")
+        path = os.path.realpath(os.curdir)+"/form.ui";# os.fspath(Path(__file__).resolve().parent / "form.ui")
         ui_file = QFile(path)
         ui_file.open(QFile.ReadOnly)
         loader.load(ui_file, self)
@@ -210,7 +217,7 @@ class webman(QWidget):
             print("网址信息: ", songdata, len(songinfo))
             if len(songinfo) < 3:
                 return
-            mp3name = './mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1])
+            mp3name = os.path.join(sys.executable, 'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
             mp3name = mp3name.replace(" ", "")
             if os.path.exists(mp3name):
                 print("已经存在: ", mp3name)
@@ -224,7 +231,7 @@ class webman(QWidget):
                 print("正在下载: ", mp3name)
                 urllib.request.urlretrieve(url=mp3url, filename=mp3name)
                 self.sigDownload.emit("正在下载: " + mp3name)
-            lrcName = './mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1])
+            lrcName = os.path.join(sys.executable, 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
             lrcName = lrcName.replace(" ", "")
             if os.path.exists(lrcName):
                 print("已经存在歌词文件: ", lrcName)
@@ -248,7 +255,7 @@ class webman(QWidget):
             if len(songinfo) < 2:
                 return
             mp3url = songinfo[2]
-            mp3name = './mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1])
+            mp3name = os.path.join(sys.executable,'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
             mp3name = mp3name.replace(" ", "")
             if os.path.exists(mp3name):
                 print("已经存在: ", mp3name)
@@ -267,8 +274,8 @@ class webman(QWidget):
                         if bl:
                             f.write(bl)
                     f.close()
-                time.sleep(1)
-                lrcName = './mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1])
+                time.sleep(0.3)
+                lrcName = os.path.join(sys.executable, 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
                 lrcName = lrcName.replace(" ", "")
                 if os.path.exists(lrcName):
                     print("已经存在歌词文件: ", lrcName)
@@ -288,7 +295,7 @@ class webman(QWidget):
     def get_songsLRC(self, singer, songsName):
         host = "https://www.8lrc.com"
         url = host+"/search/?key="+songsName
-        web_data = requests.get(url, headers=headers)
+        web_data = getDataUrl(url)
         soup = BeautifulSoup(web_data.text, 'lxml')
         lrcList = soup.select('div.cicont > h2 > a')
         if len(lrcList) == 0:
@@ -302,7 +309,7 @@ class webman(QWidget):
             lrcUrl = lrcList[0].get('href')
         lrcUrl = host+lrcUrl
         print(songsName+'歌词地址:', lrcUrl)
-        web_data = requests.get(lrcUrl, headers=headers)
+        web_data = getDataUrl(lrcUrl)
         soup2 = BeautifulSoup(web_data.text, 'lxml')
         lrcWord2 = soup2.select('div.ciInfo > script')
         pattern = r"\"\[(.*?)\"\;"
@@ -342,7 +349,8 @@ class Thread(QThread):
 
 if __name__ == "__main__":
     app = QApplication([])
-    path = "mp3"
+    path = os.path.dirname(sys.executable)+"\\mp3"
+    print(path)
     if os.path.isdir(path):
         pass
     else:
