@@ -33,12 +33,14 @@ params = {
 
 
 # mp3filePath是否是mp3格式的
-def saveMp3Format(mp3filePath):
+def saveMp3Format():
     # 读取文件内字符串
-    stats = os.stat(mp3filePath)
-    print(stats.st_size)
-    if stats.st_size == int(101831) or stats.st_size == 0:
-        os.remove(mp3filePath)
+    for filepath, dirnames, filenames in os.walk(r'./mp3'):
+        for filename in filenames:
+            filename = os.path.join(filepath, filename)
+            stats = os.stat(filename)
+            if stats.st_size == int(101831) or stats.st_size == 0:
+                os.remove(filename)
     return
 #    f = open(mp3filePath, "r")
 #    fileStr = f.read()
@@ -143,6 +145,7 @@ class Widget(QWidget):
         self.label.setText(hints)
 
     def finish(self):
+        saveMp3Format()
         self.textEdit.append("任务结束,详情查看mp3目录\n\n\n")
         self.showInfo("任务结束")
 
@@ -217,9 +220,7 @@ class webman(object):
             mp3url = songinfo[2]
             mp3name = './mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1])
             mp3name = mp3name.replace(" ", "")
-            print("开始校验", mp3name)
             if os.path.exists(mp3name):
-                saveMp3Format(mp3name)
                 print("已经存在: ", mp3name)
                 pass
             else:
@@ -230,7 +231,6 @@ class webman(object):
                             f.write(bl)
                     f.close()
                 time.sleep(1)
-                saveMp3Format(mp3name)
                 lrcName = './mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1])
                 lrcName = lrcName.replace(" ", "")
                 if os.path.exists(lrcName):
