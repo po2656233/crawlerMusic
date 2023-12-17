@@ -88,14 +88,16 @@ class Widget(QWidget):
         self.label = self.findChild(QLabel, "label")
         self.searchBtn = self.findChild(QPushButton, "pushButton_search")
         self.crawlerBtn = self.findChild(QPushButton, "pushButton_crawler")
+        self.openMp3DirBtn = self.findChild(QPushButton, "pushButton_mp3dir")
         self.closeWgBtn = self.findChild(QPushButton, "pushButton_close")
         self.textEdit = self.findChild(QTextEdit, "textEdit")
-        self.lineEditSinger = self.findChild(QLineEdit, "lineEdit_singer")
         self.lineEditSong = self.findChild(QLineEdit, "lineEdit_song")
 #        self.crawler.clicked.connect(self.get_rankList)
         self.searchBtn.clicked.connect(self.startSearh)
+        self.lineEditSong.returnPressed.connect(self.startSearh)
         self.crawlerBtn.clicked.connect(self.startCrawler)
         self.closeWgBtn.clicked.connect(self.close)
+        self.openMp3DirBtn.clicked.connect(self.openMp3Dir)
         self.work.finished.connect(self.finish)
         self.work.needer.sigDownload.connect(self.showInfo)
         self.work.needer.sigDownload.connect(self.showInfo)
@@ -142,6 +144,8 @@ class Widget(QWidget):
     def startSearh(self):
         songname = self.lineEditSong.text()
         if songname == "":
+            self.textEdit.clear()
+            self.textEdit.append("\n查询内容不能为空")
             return
         url = "http://music.163.com/api/search/get/web?type=1&offset=0&total=true&limit=100&s=" + songname;
         r = getDataUrl(url)
@@ -187,6 +191,15 @@ class Widget(QWidget):
 #        self.MyTimer.start(100)
 #        self.MyTimer.timeout.connect(self.searchSongs)
 
+    def openMp3Dir(self):
+        folder  = os.path.dirname(sys.executable)+"\\mp3"
+        #方法1：通过start explorer
+#        os.system("start explorer %s" %folder)
+        # 方法2：通过startfile
+        os.startfile(folder)
+
+
+
     def load_ui(self):
         loader = QUiLoader()
         path = os.path.realpath(os.curdir)+"/form.ui";# os.fspath(Path(__file__).resolve().parent / "form.ui")
@@ -217,7 +230,7 @@ class webman(QWidget):
             print("网址信息: ", songdata, len(songinfo))
             if len(songinfo) < 3:
                 return
-            mp3name = os.path.join(sys.executable, 'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
+            mp3name = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
             mp3name = mp3name.replace(" ", "")
             if os.path.exists(mp3name):
                 print("已经存在: ", mp3name)
@@ -231,7 +244,7 @@ class webman(QWidget):
                 print("正在下载: ", mp3name)
                 urllib.request.urlretrieve(url=mp3url, filename=mp3name)
                 self.sigDownload.emit("正在下载: " + mp3name)
-            lrcName = os.path.join(sys.executable, 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
+            lrcName = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
             lrcName = lrcName.replace(" ", "")
             if os.path.exists(lrcName):
                 print("已经存在歌词文件: ", lrcName)
@@ -255,7 +268,7 @@ class webman(QWidget):
             if len(songinfo) < 2:
                 return
             mp3url = songinfo[2]
-            mp3name = os.path.join(sys.executable,'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
+            mp3name = os.path.join(os.path.dirname(sys.executable),'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
             mp3name = mp3name.replace(" ", "")
             if os.path.exists(mp3name):
                 print("已经存在: ", mp3name)
@@ -275,7 +288,7 @@ class webman(QWidget):
                             f.write(bl)
                     f.close()
                 time.sleep(0.3)
-                lrcName = os.path.join(sys.executable, 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
+                lrcName = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
                 lrcName = lrcName.replace(" ", "")
                 if os.path.exists(lrcName):
                     print("已经存在歌词文件: ", lrcName)
