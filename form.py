@@ -56,4 +56,4 @@ class Ui_Widget(object):
         self.pushButton_search.setText(_translate("Widget", "搜索"))
         self.pushButton_close.setText(_translate("Widget", "关闭窗口"))
         self.lineEdit_song.setPlaceholderText(_translate("Widget", "搜索歌曲"))
-        self.lineEdit_index.setPlaceholderText(_translate("Widget", "指定歌曲索引(默认所有)如:1,3,5,9,14"))
+        self.lineEdit_index.setPlaceholderText(_translate("Widget", "指定歌曲(默认所有)如:[1:4]或1,2,3,4,..."))

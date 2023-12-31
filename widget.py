@@ -84,6 +84,7 @@ class Widget(QWidget):
         self.index = 0
         self.songs_list = []
         self.songs_fin = []
+        self.songs_exist = []
         self.load_ui()
         self.work = Thread()
         self.label = self.findChild(QLabel, "label")
@@ -98,12 +99,14 @@ class Widget(QWidget):
         self.searchBtn.clicked.connect(self.startSearh)
         self.lineEditSong.returnPressed.connect(self.startSearh)
         self.crawlerBtn.clicked.connect(self.startCrawler)
-        self.closeWgBtn.clicked.connect(self.close)
+        self.lineEditIndexs.returnPressed.connect(self.startCrawler)
+        self.closeWgBtn.clicked.connect(self.onClose)
         self.openMp3DirBtn.clicked.connect(self.openMp3Dir)
         self.work.finished.connect(self.finish)
         self.work.needer.sigDownload.connect(self.showInfo)
         self.work.needer.sigDownload.connect(self.showInfo)
         self.work.needer.sigFinal.connect(self.addFinal)
+        self.work.needer.sigExist.connect(self.addExist)
         self.work.needer.sigFail.connect(self.addInfo)
 
     # 酷狗排行榜
@@ -169,10 +172,37 @@ class Widget(QWidget):
 # 开始爬取歌曲
     def startCrawler(self):
         strIndexs = self.lineEditIndexs.text()
-        indexs = strIndexs.split(',')
-        if strIndexs.find("，"):
-            indexs = strIndexs.split('，')
+        indexs = []
+        # 获取前几首
+        if 3 < len(strIndexs) and strIndexs[0] == '[' and strIndexs[-1] == ']':
+            numbers = re.findall(r'\d+', strIndexs)
+            if strIndexs.find(":"):
+                numbers = [int(n) for n in numbers]  # 转换为整数
+                min = -1
+                max = -1
+                print(strIndexs, '当前数值0', numbers)
+                if 1 < len(numbers):
+                    min = numbers[0]
+                    max = numbers[1]
+                elif strIndexs[1] == ':':
+                    max = numbers[0]
+                else:
+                    min = numbers[0]
+                    max = numbers[0]
+                for i in range(0, len(self.songs_list)):
+                    if min <= i+1 and i+1 <= max:
+                        indexs.append(str(i))
+            else:
+                indexs = numbers
+        if 0 == len(indexs):
+            if strIndexs.find("，"):
+                indexs = strIndexs.split('，')
+            elif len(indexs) <= 1:
+                indexs = strIndexs.split(',')
         print(len(indexs), '当前数值', indexs, len(strIndexs))
+        if 0 < len(strIndexs) and not indexs[0].isdigit():
+            self.showInfo("索引不符合规则,请重新填写")
+            return
         songslist = []
         for i in range(0, len(self.songs_list)):
             if str(i+1) in indexs or 0 == len(strIndexs):
@@ -181,11 +211,12 @@ class Widget(QWidget):
             self.showInfo("没有可爬取的资源")
             return
         self.songs_fin = []
+        self.songs_exist = []
         self.showInfo("启动任务,获取歌曲地址")
         self.searchBtn.setEnabled(False)
         self.crawlerBtn.setEnabled(False)
 #        self.MyTimer.stop()
-        self.textEdit.append("\n\n正在下载歌曲...请勿关闭")
+        self.textEdit.append("\n正在下载歌曲...请勿关闭")
         self.work.init_songs(songslist)
         self.work.quit()
         self.work.wait()
@@ -200,12 +231,18 @@ class Widget(QWidget):
     def addFinal(self, hints):
         self.songs_fin.append(hints)
 
+    def addExist(self, hints):
+        self.songs_exist.append(hints)
+
     def finish(self):
+        if 0 < len(self.songs_exist):
+            self.textEdit.append("本地已存在歌曲:\n"+'\n'.join(self.songs_exist))
         if 0 < len(self.songs_fin):
             self.textEdit.append("已下载的歌曲:\n"+'\n'.join(self.songs_fin))
         self.textEdit.append("\n任务结束,详情查看mp3目录\n\n")
         print(self.songs_fin)
         self.showInfo("任务结束")
+        self.work.quit()
         self.searchBtn.setEnabled(True)
         self.crawlerBtn.setEnabled(True)
 
@@ -214,13 +251,11 @@ class Widget(QWidget):
 #        self.MyTimer.timeout.connect(self.searchSongs)
 
     def openMp3Dir(self):
-        folder  = os.path.dirname(sys.executable)+"\\mp3"
-        #方法1：通过start explorer
+        folder = os.path.dirname(sys.executable)+"\\mp3"
+        # 方法1：通过start explorer
 #        os.system("start explorer %s" %folder)
         # 方法2：通过startfile
         os.startfile(folder)
-
-
 
     def load_ui(self):
         loader = QUiLoader()
@@ -230,11 +265,15 @@ class Widget(QWidget):
         loader.load(ui_file, self)
         ui_file.close()
 
+    def onClose(self):
+        self.work.deleteLater()
+        self.close()
 
 class webman(QWidget):
     sigDownload = Signal(str)
     sigFinal = Signal(str)
     sigFail = Signal(str)
+    sigExist = Signal(str)
 
     def __init__(self):
         super().__init__()
@@ -334,6 +373,7 @@ class webman(QWidget):
                             lrcData = lrcData.replace("\\n", "\n")
                             f.writelines(lrcData)
             else:
+                self.sigExist.emit(mp3name)
                 print("已经存在: ", mp3name)
 
         finally:
