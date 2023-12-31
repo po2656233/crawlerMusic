@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>732</width>
+    <width>1038</width>
     <height>604</height>
    </rect>
   </property>
@@ -15,47 +15,61 @@
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="3" column="1">
-    <widget class="QPushButton" name="pushButton_close">
-     <property name="text">
-      <string>关闭窗口</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0">
-    <widget class="QPushButton" name="pushButton_search">
-     <property name="text">
-      <string>搜索</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0" colspan="2">
-    <widget class="QTextEdit" name="textEdit"/>
-   </item>
-   <item row="0" column="0" colspan="2">
-    <widget class="QLineEdit" name="lineEdit_song">
-     <property name="placeholderText">
-      <string>搜索歌曲</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="1">
     <widget class="QPushButton" name="pushButton_crawler">
      <property name="text">
       <string>爬取歌曲</string>
      </property>
     </widget>
    </item>
-   <item row="3" column="0">
+   <item row="5" column="0" colspan="2">
+    <widget class="QTextEdit" name="textEdit">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
     <widget class="QPushButton" name="pushButton_mp3dir">
      <property name="text">
       <string>MP3目录</string>
      </property>
     </widget>
    </item>
-   <item row="5" column="0" colspan="2">
+   <item row="6" column="0" colspan="2">
     <widget class="QLabel" name="label">
      <property name="text">
       <string>状态</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QPushButton" name="pushButton_search">
+     <property name="text">
+      <string>搜索</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="pushButton_close">
+     <property name="text">
+      <string>关闭窗口</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QLineEdit" name="lineEdit_song">
+     <property name="placeholderText">
+      <string>搜索歌曲</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="1">
+    <widget class="QLineEdit" name="lineEdit_index">
+     <property name="placeholderText">
+      <string>指定歌曲索引(默认所有)如:1,3,5,9,14</string>
      </property>
     </widget>
    </item>

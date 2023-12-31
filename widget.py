@@ -80,9 +80,10 @@ def getDataUrl(url):
 class Widget(QWidget):
     def __init__(self):
         super(Widget, self).__init__()
-#        self.MyTimer = QTimer()
+        # self.MyTimer = QTimer()
         self.index = 0
         self.songs_list = []
+        self.songs_fin = []
         self.load_ui()
         self.work = Thread()
         self.label = self.findChild(QLabel, "label")
@@ -92,7 +93,8 @@ class Widget(QWidget):
         self.closeWgBtn = self.findChild(QPushButton, "pushButton_close")
         self.textEdit = self.findChild(QTextEdit, "textEdit")
         self.lineEditSong = self.findChild(QLineEdit, "lineEdit_song")
-#        self.crawler.clicked.connect(self.get_rankList)
+        self.lineEditIndexs = self.findChild(QLineEdit, "lineEdit_index")
+        # self.crawler.clicked.connect(self.get_rankList)
         self.searchBtn.clicked.connect(self.startSearh)
         self.lineEditSong.returnPressed.connect(self.startSearh)
         self.crawlerBtn.clicked.connect(self.startCrawler)
@@ -101,9 +103,10 @@ class Widget(QWidget):
         self.work.finished.connect(self.finish)
         self.work.needer.sigDownload.connect(self.showInfo)
         self.work.needer.sigDownload.connect(self.showInfo)
+        self.work.needer.sigFinal.connect(self.addFinal)
         self.work.needer.sigFail.connect(self.addInfo)
 
-# 酷狗排行榜
+    # 酷狗排行榜
     def get_rankList(self):
         self.index += 1
         self.showInfo("第"+str(self.index)+"次,获取歌曲地址")
@@ -140,7 +143,7 @@ class Widget(QWidget):
             self.work.wait()
             self.work.start()
 
-# 查找歌曲 网易云歌曲下载
+    # 查找歌曲 网易云歌曲下载
     def startSearh(self):
         songname = self.lineEditSong.text()
         if songname == "":
@@ -157,20 +160,33 @@ class Widget(QWidget):
         self.textEdit.append("\n歌曲列表如下:")
         idx = 0
         for info in webdata["result"]["songs"]:
-            idx += 1
             url = "http://music.163.com/song/media/outer/url?id={}.mp3".format(info["id"])
+            idx += 1
             self.songs_list.append(info["artists"][0]["name"]+'|'+info["name"]+'|'+url)
             self.textEdit.append("\n第{}首歌曲:".format(idx)+info["name"]+ " 歌手:"+info["artists"][0]["name"]+" 下载地址:"+url)
         self.textEdit.append("\n共{}首歌曲".format(len(self.songs_list)))
 
 # 开始爬取歌曲
     def startCrawler(self):
+        strIndexs = self.lineEditIndexs.text()
+        indexs = strIndexs.split(',')
+        if strIndexs.find("，"):
+            indexs = strIndexs.split('，')
+        print(len(indexs), '当前数值', indexs, len(strIndexs))
+        songslist = []
+        for i in range(0, len(self.songs_list)):
+            if str(i+1) in indexs or 0 == len(strIndexs):
+                songslist.append(self.songs_list[i])
+        if 0 == len(songslist):
+            self.showInfo("没有可爬取的资源")
+            return
+        self.songs_fin = []
         self.showInfo("启动任务,获取歌曲地址")
         self.searchBtn.setEnabled(False)
         self.crawlerBtn.setEnabled(False)
 #        self.MyTimer.stop()
         self.textEdit.append("\n\n正在下载歌曲...请勿关闭")
-        self.work.init_songs(self.songs_list)
+        self.work.init_songs(songslist)
         self.work.quit()
         self.work.wait()
         self.work.start()
@@ -181,8 +197,14 @@ class Widget(QWidget):
     def addInfo(self, hints):
         self.textEdit.append("\n"+hints)
 
+    def addFinal(self, hints):
+        self.songs_fin.append(hints)
+
     def finish(self):
-        self.textEdit.append("任务结束,详情查看mp3目录\n\n\n")
+        if 0 < len(self.songs_fin):
+            self.textEdit.append("已下载的歌曲:\n"+'\n'.join(self.songs_fin))
+        self.textEdit.append("\n任务结束,详情查看mp3目录\n\n")
+        print(self.songs_fin)
         self.showInfo("任务结束")
         self.searchBtn.setEnabled(True)
         self.crawlerBtn.setEnabled(True)
@@ -211,6 +233,7 @@ class Widget(QWidget):
 
 class webman(QWidget):
     sigDownload = Signal(str)
+    sigFinal = Signal(str)
     sigFail = Signal(str)
 
     def __init__(self):
@@ -220,6 +243,10 @@ class webman(QWidget):
         chrome_options.add_argument('--headless')
         s = Service(executable_path=r"C:\\Program Files\\Google\Chrome\\Application\\chromedriver.exe")
         self.browser = webdriver.Chrome(service=s, options=chrome_options)
+        self.count = 0
+        self.goodMp3Count = 0
+
+    def reset(self):
         self.count = 0
         self.goodMp3Count = 0
 
@@ -268,18 +295,23 @@ class webman(QWidget):
             if len(songinfo) < 2:
                 return
             mp3url = songinfo[2]
-            mp3name = os.path.join(os.path.dirname(sys.executable),'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
-            mp3name = mp3name.replace(" ", "")
+            mp3name1 = os.path.join(os.path.dirname(sys.executable),'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
+            mp3name = mp3name1.replace(" ", "")
+            ishave = False
             if os.path.exists(mp3name):
-                print("已经存在: ", mp3name)
-                pass
-            else:
+                parts = re.split(r'id=', mp3url)
+                if 1 < len(parts):
+                    mp3name = mp3name1.replace(".mp3", parts[1])
+                    ishave = os.path.exists(mp3name)
+                else:
+                    ishave = True
+            if not ishave:
                 self.goodMp3Count += 1
                 r = requests.get(mp3url, stream=True)
                 # 不满足mp3格式则不写入
-                if checkMp3File(r.content) == False:
+                if not checkMp3File(r.content):
                     print(mp3name+"不满足mp3格式！！！")
-                    self.sigFail.emit(mp3name+"下载失败(不满足mp3格式)")
+                    self.sigFail.emit("下载失败(非mp3格式):"+mp3name+" 链接:"+mp3url)
                     return
                 self.sigDownload.emit("正在下载(第{}文件): ".format(self.goodMp3Count) + mp3name)
                 with open(mp3name, "wb") as f:
@@ -287,6 +319,7 @@ class webman(QWidget):
                         if bl:
                             f.write(bl)
                     f.close()
+                    self.sigFinal.emit(mp3name)
                 time.sleep(0.3)
                 lrcName = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
                 lrcName = lrcName.replace(" ", "")
@@ -300,6 +333,8 @@ class webman(QWidget):
                             lrcData = lrcData.replace("\\r\\n", "\n")
                             lrcData = lrcData.replace("\\n", "\n")
                             f.writelines(lrcData)
+            else:
+                print("已经存在: ", mp3name)
 
         finally:
             return
@@ -344,20 +379,22 @@ class Thread(QThread):
         self.needer = webman()
 
     def init_songs(self, list):
+        self.needer.reset()
         self.urllist = list
 
     def run(self):
-        new_loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(new_loop)
-        loop = asyncio.get_event_loop()
-#        tasks = [needer.get_music(song) for song in self.urllist]
+        # tasks = [needer.get_music(song) for song in self.urllist]
         tasks = [self.needer.get_musicWYY(song) for song in self.urllist]
-        wait_coro = asyncio.wait(tasks)
-        loop.run_until_complete(wait_coro)
-        loop.close()
-        if len(self.urllist) <= self.needer.count:
-            self.needer.finished()
-            self.quit()
+        if len(tasks):
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            loop = asyncio.get_event_loop()
+            wait_coro = asyncio.wait(tasks)
+            loop.run_until_complete(wait_coro)
+            loop.close()
+            if len(self.urllist) <= self.needer.count:
+                self.needer.finished()
+                self.quit()
 
 
 if __name__ == "__main__":
