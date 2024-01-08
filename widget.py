@@ -106,7 +106,7 @@ class Widget(QWidget):
         self.lineEditIndexs.returnPressed.connect(self.startCrawler)
         self.stopWgBtn.clicked.connect(self.onClose)
         self.openMp3DirBtn.clicked.connect(self.openMp3Dir)
-        self.work.finished.connect(self.finish)
+        self.work.sigOver.connect(self.finish)
         self.work.needer.sigDownload.connect(self.showInfo)
         self.work.needer.sigDownload.connect(self.showInfo)
         self.work.needer.sigFinal.connect(self.addFinal)
@@ -166,7 +166,10 @@ class Widget(QWidget):
             return
         try:
             webdata["result"]
+            webdata["result"]["songs"]
         except KeyError:
+            self.textEdit.clear()
+            self.textEdit.append("\n查询内容异常[或操作过于频繁(稍等1分钟)]")
             return
         self.songs_list.clear()
         self.textEdit.clear()
@@ -224,15 +227,15 @@ class Widget(QWidget):
             return
         self.songs_fin = []
         self.songs_exist = []
-        self.showInfo("启动任务,获取歌曲地址")
         self.searchBtn.setEnabled(False)
         self.crawlerBtn.setEnabled(False)
 #        self.MyTimer.stop()
         self.textEdit.append("\n正在下载歌曲...请勿关闭")
-        self.work.init_songs(songslist)
-        self.work.quit()
-        self.work.wait()
+        self.showInfo("启动任务,获取歌曲地址")
+        self.work.doing(songslist)
         self.work.start()
+
+
 
     def showInfo(self, hints):
         self.label.setText(hints)
@@ -252,8 +255,11 @@ class Widget(QWidget):
         if 0 < len(self.songs_fin):
             self.textEdit.append("已下载的歌曲:\n"+'\n'.join(self.songs_fin))
         self.textEdit.append("\n任务结束,详情查看mp3目录\n\n")
+        self.work.requestInterruption()
+        if not self.work.isFinished():
+            self.work.quit()
+            self.work.wait()
         self.showInfo("任务结束")
-        self.work.quit()
         self.searchBtn.setEnabled(True)
         self.crawlerBtn.setEnabled(True)
 
@@ -384,12 +390,13 @@ class webman(QWidget):
                             # lrcData = lrcData.replace("\\n", "\n")
                             f.write(lrcData)
                         self.sigFinal.emit(mp3name)
+                        print("生成歌词文件: ", lrcName)
                     else:
                         self.sigFinal.emit(mp3name+"(无歌词)")
+                        print("无歌词: ", lrcName)
             else:
                 self.sigExist.emit(mp3name)
                 print("已经存在: ", mp3name)
-
         finally:
             return
 
@@ -397,7 +404,7 @@ class webman(QWidget):
     def get_songsLRC(self, singer, songsName):
         host = "https://www.93lrc.com"
         print("歌词-->0",singer, songsName)
-        keyword = "keyword="+songsName
+        keyword = "keyword="+songsName+" "+singer
         web_data = getDataUrl(host+"/search?"+keyword)
         htmldoc = str(web_data.text)
         htmldoc = htmldoc.replace('<!doctype html>', '', 1)
@@ -405,15 +412,19 @@ class webman(QWidget):
         # soup = BeautifulSoup(htmldoc, 'html.parser')
         lrcList = soup.select('div > table > tbody > tr > td > a')
         if len(lrcList) == 0:
+            print("没有歌词")
             return ""
         lrcUrl = ""
         songIndex = -1
-        for i in range(len(lrcList)):
+        lrcLen = len(lrcList)
+        # 查找歌词与歌手最匹配项
+        for i in range(0,lrcLen,2):
             lrc = lrcList[i]
-            if lrc.get_text() == singer:
+            if lrc.get_text().find(songsName) != -1:
                 # lrcUrl = lrc.get('href')
-                songIndex += i
-                break
+                songIndex = i
+                if i+1 < lrcLen and lrcList[i+1].get_text().find(singer) != -1:
+                    break
         if -1 != songIndex:
             lrcUrl = '/lrc/'+''.join(c for c in lrcList[songIndex].get('href') if c.isdigit())+".lrc"
             print(lrcList[songIndex].get('href'))
@@ -432,34 +443,42 @@ class webman(QWidget):
         # return ""
 
     def finished(self):
-        self.browser.quit()
         print("异步任务已完成")
-
+        self.browser.quit()
 
 # 继承QThread
 class Thread(QThread):
+    sigOver = Signal()
     def __init__(self):
         super().__init__()
-        self.urllist = []
         self.needer = webman()
+        self.setTerminationEnabled(True)
+        self.tasks = []
+        self.loop = None
+        self.isfirst = True
 
-    def init_songs(self, list):
+    def doing(self, list):
         self.needer.reset()
-        self.urllist = list
+        self.tasks = [self.needer.get_musicWYY(song) for song in list]
 
     def run(self):
-        # tasks = [needer.get_music(song) for song in self.urllist]
-        tasks = [self.needer.get_musicWYY(song) for song in self.urllist]
-        if len(tasks):
+        if self.isfirst and 0 < len(self.tasks):
             new_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(new_loop)
-            loop = asyncio.get_event_loop()
-            wait_coro = asyncio.wait(tasks)
-            loop.run_until_complete(wait_coro)
-            loop.close()
-            if len(self.urllist) <= self.needer.count:
-                self.needer.finished()
-                self.quit()
+            self.loop = asyncio.get_event_loop()
+            wait_coro = asyncio.wait(self.tasks)
+            self.loop.run_until_complete(wait_coro)
+            self.loop.close()
+            self.isfirst = False
+        # tasks = [needer.get_music(song) for song in self.urllist]
+        if 0 < len(self.tasks) and len(self.tasks) <= self.needer.count:
+            print('task',len(self.tasks), self.needer.count)
+            self.sigOver.emit()
+            self.needer.finished()
+            return
+
+
+
 
 
 if __name__ == "__main__":
