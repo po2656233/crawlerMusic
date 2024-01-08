@@ -49,11 +49,11 @@ class Ui_Widget(object):
 
     def retranslateUi(self, Widget):
         _translate = QtCore.QCoreApplication.translate
-        Widget.setWindowTitle(_translate("Widget", "Widget"))
+        Widget.setWindowTitle(_translate("Widget", "音乐爬虫"))
         self.pushButton_crawler.setText(_translate("Widget", "爬取歌曲"))
         self.pushButton_mp3dir.setText(_translate("Widget", "MP3目录"))
         self.label.setText(_translate("Widget", "状态"))
         self.pushButton_search.setText(_translate("Widget", "搜索"))
-        self.pushButton_close.setText(_translate("Widget", "关闭窗口"))
+        self.pushButton_close.setText(_translate("Widget", "关闭进程"))
         self.lineEdit_song.setPlaceholderText(_translate("Widget", "搜索歌曲"))
-        self.lineEdit_index.setPlaceholderText(_translate("Widget", "指定歌曲(默认所有)如:[1:4]或1,2,3,4,..."))
+        self.lineEdit_index.setPlaceholderText(_translate("Widget", "搜索结果指定下载(默认所有)如:[1:4]或1,2,3,4,..."))

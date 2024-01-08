@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Widget</string>
+   <string>音乐爬虫</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="3" column="1">
@@ -55,7 +55,7 @@
    <item row="4" column="1">
     <widget class="QPushButton" name="pushButton_close">
      <property name="text">
-      <string>关闭窗口</string>
+      <string>关闭进程</string>
      </property>
     </widget>
    </item>
@@ -69,7 +69,7 @@
    <item row="0" column="1">
     <widget class="QLineEdit" name="lineEdit_index">
      <property name="placeholderText">
-      <string>指定歌曲(默认所有)如:[1:4]或1,2,3,4,...</string>
+      <string>搜索结果指定下载(默认所有)如:[1:4]或1,2,3,4,...</string>
      </property>
     </widget>
    </item>

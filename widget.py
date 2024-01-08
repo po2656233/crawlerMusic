@@ -6,11 +6,10 @@ import sys
 import requests
 import urllib
 
-from pathlib import Path
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from PySide2.QtWidgets import QApplication, QWidget, QPushButton, QTextEdit, QLineEdit, QLabel
-from PySide2.QtCore import QFile, QTimer, QThread, Signal, Slot
+from PySide2.QtCore import QFile, QThread, Signal
 from PySide2.QtUiTools import QUiLoader
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
@@ -77,6 +76,11 @@ def getDataUrl(url):
         else:
             return None
 
+def postDataUrl(url, param):
+    with requests.post(url, json=param, headers=headers) as response:
+        print(response)
+        return response
+
 class Widget(QWidget):
     def __init__(self):
         super(Widget, self).__init__()
@@ -91,7 +95,7 @@ class Widget(QWidget):
         self.searchBtn = self.findChild(QPushButton, "pushButton_search")
         self.crawlerBtn = self.findChild(QPushButton, "pushButton_crawler")
         self.openMp3DirBtn = self.findChild(QPushButton, "pushButton_mp3dir")
-        self.closeWgBtn = self.findChild(QPushButton, "pushButton_close")
+        self.stopWgBtn = self.findChild(QPushButton, "pushButton_close")
         self.textEdit = self.findChild(QTextEdit, "textEdit")
         self.lineEditSong = self.findChild(QLineEdit, "lineEdit_song")
         self.lineEditIndexs = self.findChild(QLineEdit, "lineEdit_index")
@@ -100,7 +104,7 @@ class Widget(QWidget):
         self.lineEditSong.returnPressed.connect(self.startSearh)
         self.crawlerBtn.clicked.connect(self.startCrawler)
         self.lineEditIndexs.returnPressed.connect(self.startCrawler)
-        self.closeWgBtn.clicked.connect(self.onClose)
+        self.stopWgBtn.clicked.connect(self.onClose)
         self.openMp3DirBtn.clicked.connect(self.openMp3Dir)
         self.work.finished.connect(self.finish)
         self.work.needer.sigDownload.connect(self.showInfo)
@@ -109,45 +113,47 @@ class Widget(QWidget):
         self.work.needer.sigExist.connect(self.addExist)
         self.work.needer.sigFail.connect(self.addInfo)
 
-    # 酷狗排行榜
-    def get_rankList(self):
-        self.index += 1
-        self.showInfo("第"+str(self.index)+"次,获取歌曲地址")
-        host = "https://www.kugou.com/yy/rank/home/"
-        url = host+"{}-8888.html".format(self.index)
-        web_data = getDataUrl(url)
-        soup = BeautifulSoup(web_data.text, 'lxml')
-        ranks = soup.select('span.pc_temp_num')
-        titles = soup.select('div.pc_temp_songlist > ul > li > a')
-        times = soup.select('span.pc_temp_tips_r > span')
-        for rank, title, time1 in zip(ranks, titles, times):
-            data = {
-                "rank": rank.get_text().strip(),
-                "singer": title.get_text().replace("\n", "").replace("\t", "").split('-')[1],
-                "song": title.get_text().replace("\n", "").replace("\t", "").split('-')[0],
-                "time": time1.get_text().strip(),
-                "url": title.get('href')
-            }
-            print("tile", title.get('href'))
-            strData = str(data)
-            self.textEdit.append(strData)
-            # 获取歌曲
-            songs_url = title.get('href')
-            if songs_url != '':
-                self.songs_list.append(data["singer"]+'|'+data["song"]+'|'+songs_url)
-        # 启动任务
-        if self.index == 23:
-            print("启动任务,获取歌曲地址")
-            self.showInfo("启动任务,获取歌曲地址")
-#            self.MyTimer.stop()
-            self.textEdit.append("\n\n正在下载歌曲...请勿关闭")
-            self.work.init_songs(self.songs_list)
-            self.work.quit()
-            self.work.wait()
-            self.work.start()
+#     # 酷狗排行榜
+#     def get_rankList(self):
+#         self.index += 1
+#         self.showInfo("第"+str(self.index)+"次,获取歌曲地址")
+#         host = "https://www.kugou.com/yy/rank/home/"
+#         url = host+"{}-8888.html".format(self.index)
+#         web_data = getDataUrl(url)
+#         soup = BeautifulSoup(web_data.text, 'lxml')
+#         ranks = soup.select('span.pc_temp_num')
+#         titles = soup.select('div.pc_temp_songlist > ul > li > a')
+#         times = soup.select('span.pc_temp_tips_r > span')
+#         for rank, title, time1 in zip(ranks, titles, times):
+#             data = {
+#                 "rank": rank.get_text().strip(),
+#                 "singer": title.get_text().replace("\n", "").replace("\t", "").split('-')[1],
+#                 "song": title.get_text().replace("\n", "").replace("\t", "").split('-')[0],
+#                 "time": time1.get_text().strip(),
+#                 "url": title.get('href')
+#             }
+#             print("tile", title.get('href'))
+#             strData = str(data)
+#             self.textEdit.append(strData)
+#             # 获取歌曲
+#             songs_url = title.get('href')
+#             if songs_url != '':
+#                 self.songs_list.append(data["singer"]+'|'+data["song"]+'|'+songs_url)
+#         # 启动任务
+#         if self.index == 23:
+#             print("启动任务,获取歌曲地址")
+#             self.showInfo("启动任务,获取歌曲地址")
+# #            self.MyTimer.stop()
+#             self.textEdit.append("\n\n正在下载歌曲...请勿关闭")
+#             self.work.init_songs(self.songs_list)
+#             # self.work.quit()
+#             # self.work.wait()
+#             self.work.start()
 
     # 查找歌曲 网易云歌曲下载
     def startSearh(self):
+        if not self.searchBtn.isEnabled() :
+            return
         songname = self.lineEditSong.text()
         if songname == "":
             self.textEdit.clear()
@@ -157,6 +163,10 @@ class Widget(QWidget):
         r = getDataUrl(url)
         webdata = r.json()
         if len(webdata) == 0:
+            return
+        try:
+            webdata["result"]
+        except KeyError:
             return
         self.songs_list.clear()
         self.textEdit.clear()
@@ -171,6 +181,8 @@ class Widget(QWidget):
 
 # 开始爬取歌曲
     def startCrawler(self):
+        if not self.searchBtn.isEnabled() :
+            return
         strIndexs = self.lineEditIndexs.text()
         indexs = []
         # 获取前几首
@@ -240,7 +252,6 @@ class Widget(QWidget):
         if 0 < len(self.songs_fin):
             self.textEdit.append("已下载的歌曲:\n"+'\n'.join(self.songs_fin))
         self.textEdit.append("\n任务结束,详情查看mp3目录\n\n")
-        print(self.songs_fin)
         self.showInfo("任务结束")
         self.work.quit()
         self.searchBtn.setEnabled(True)
@@ -259,15 +270,14 @@ class Widget(QWidget):
 
     def load_ui(self):
         loader = QUiLoader()
-        path = os.path.realpath(os.curdir)+"/form.ui";# os.fspath(Path(__file__).resolve().parent / "form.ui")
+        path = os.path.realpath(os.curdir)+"/form.ui"
         ui_file = QFile(path)
         ui_file.open(QFile.ReadOnly)
         loader.load(ui_file, self)
         ui_file.close()
 
     def onClose(self):
-        self.work.deleteLater()
-        self.close()
+        self.deleteLater()
 
 class webman(QWidget):
     sigDownload = Signal(str)
@@ -286,44 +296,45 @@ class webman(QWidget):
         self.goodMp3Count = 0
 
     def reset(self):
+        self.browser.quit()
         self.count = 0
         self.goodMp3Count = 0
 
-    async def get_music(self, songdata):
-        self.count += 1
-        try:
-            songinfo = songdata.split('|')
-            print("网址信息: ", songdata, len(songinfo))
-            if len(songinfo) < 3:
-                return
-            mp3name = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
-            mp3name = mp3name.replace(" ", "")
-            if os.path.exists(mp3name):
-                print("已经存在: ", mp3name)
-                pass
-            else:
-                self.browser.get(songinfo[2])
-#                await asyncio.sleep(1)
-                time.sleep(0.5)
-                audio = self.browser.find_element(By.CLASS_NAME, "music")
-                mp3url = audio.get_attribute('src')
-                print("正在下载: ", mp3name)
-                urllib.request.urlretrieve(url=mp3url, filename=mp3name)
-                self.sigDownload.emit("正在下载: " + mp3name)
-            lrcName = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
-            lrcName = lrcName.replace(" ", "")
-            if os.path.exists(lrcName):
-                print("已经存在歌词文件: ", lrcName)
-                pass
-            else:
-                lrcData = self.get_songsLRC(songinfo[0], songinfo[1])
-                if lrcData != "":
-                    with open(lrcName, 'w', encoding='utf_8_sig') as f:
-                        lrcData = lrcData.replace("\\r\\n", "\n")
-                        lrcData = lrcData.replace("\\n", "\n")
-                        f.writelines(lrcData)
-        finally:
-            return
+#     async def get_music(self, songdata):
+#         try:
+#             songinfo = songdata.split('|')
+#             print("网址信息: ", songdata, len(songinfo))
+#             if len(songinfo) < 3:
+#                 return
+#             mp3name = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.mp3'.format(songinfo[0]+"-"+songinfo[1]))
+#             mp3name = mp3name.replace(" ", "")
+#             if os.path.exists(mp3name):
+#                 print("已经存在: ", mp3name)
+#                 pass
+#             else:
+#                 self.browser.get(songinfo[2])
+# #                await asyncio.sleep(1)
+#                 time.sleep(0.5)
+#                 audio = self.browser.find_element(By.CLASS_NAME, "music")
+#                 mp3url = audio.get_attribute('src')
+#                 print("正在下载: ", mp3name)
+#                 urllib.request.urlretrieve(url=mp3url, filename=mp3name)
+#                 self.sigDownload.emit("正在下载: " + mp3name)
+#             lrcName = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
+#             lrcName = lrcName.replace(" ", "")
+#             if os.path.exists(lrcName):
+#                 print("已经存在歌词文件: ", lrcName)
+#                 pass
+#             else:
+#                 lrcData = self.get_songsLRC(songinfo[0], songinfo[1])
+#                 if lrcData != "":
+#                     with open(lrcName, 'w', encoding='utf_8_sig') as f:
+#                         lrcData = lrcData.replace("\\r\\n", "\n")
+#                         lrcData = lrcData.replace("\\n", "\n")
+#                         f.writelines(lrcData)
+#         finally:
+#             self.count += 1
+#             return
 
 # 网易云下载
     async def get_musicWYY(self, songdata):
@@ -358,20 +369,23 @@ class webman(QWidget):
                         if bl:
                             f.write(bl)
                     f.close()
-                    self.sigFinal.emit(mp3name)
-                time.sleep(0.3)
                 lrcName = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
                 lrcName = lrcName.replace(" ", "")
                 if os.path.exists(lrcName):
                     print("已经存在歌词文件: ", lrcName)
+                    self.sigFinal.emit(mp3name)
                     pass
                 else:
                     lrcData = self.get_songsLRC(songinfo[0], songinfo[1])
                     if lrcData != "":
-                        with open(lrcName, 'w', encoding='utf_8_sig') as f:
-                            lrcData = lrcData.replace("\\r\\n", "\n")
-                            lrcData = lrcData.replace("\\n", "\n")
-                            f.writelines(lrcData)
+                        # print('wj:', lrcData)
+                        with open(lrcName, 'wb') as f:
+                            # lrcData = lrcData.replace("\\r\\n", "\n")
+                            # lrcData = lrcData.replace("\\n", "\n")
+                            f.write(lrcData)
+                        self.sigFinal.emit(mp3name)
+                    else:
+                        self.sigFinal.emit(mp3name+"(无歌词)")
             else:
                 self.sigExist.emit(mp3name)
                 print("已经存在: ", mp3name)
@@ -379,32 +393,43 @@ class webman(QWidget):
         finally:
             return
 
-    # 从www.8lrc.com爬取歌曲 按歌曲或歌手
+    # 从爬取歌曲 按歌曲或歌手
     def get_songsLRC(self, singer, songsName):
-        host = "https://www.8lrc.com"
-        url = host+"/search/?key="+songsName
-        web_data = getDataUrl(url)
-        soup = BeautifulSoup(web_data.text, 'lxml')
-        lrcList = soup.select('div.cicont > h2 > a')
+        host = "https://www.93lrc.com"
+        print("歌词-->0",singer, songsName)
+        keyword = "keyword="+songsName
+        web_data = getDataUrl(host+"/search?"+keyword)
+        htmldoc = str(web_data.text)
+        htmldoc = htmldoc.replace('<!doctype html>', '', 1)
+        soup = BeautifulSoup(htmldoc, 'lxml')
+        # soup = BeautifulSoup(htmldoc, 'html.parser')
+        lrcList = soup.select('div > table > tbody > tr > td > a')
         if len(lrcList) == 0:
             return ""
         lrcUrl = ""
-        for lrc in lrcList:
+        songIndex = -1
+        for i in range(len(lrcList)):
+            lrc = lrcList[i]
             if lrc.get_text() == singer:
-                lrcUrl = lrc.get('href')
+                # lrcUrl = lrc.get('href')
+                songIndex += i
                 break
+        if -1 != songIndex:
+            lrcUrl = '/lrc/'+''.join(c for c in lrcList[songIndex].get('href') if c.isdigit())+".lrc"
+            print(lrcList[songIndex].get('href'))
         if lrcUrl == "":
-            lrcUrl = lrcList[0].get('href')
+            lrcUrl = '/lrc/'+''.join(c for c in lrcList[0].get('href') if c.isdigit())+".lrc"
         lrcUrl = host+lrcUrl
         print(songsName+'歌词地址:', lrcUrl)
-        web_data = getDataUrl(lrcUrl)
-        soup2 = BeautifulSoup(web_data.text, 'lxml')
-        lrcWord2 = soup2.select('div.ciInfo > script')
-        pattern = r"\"\[(.*?)\"\;"
-        results = re.search(pattern, str(lrcWord2))
-        if results:
-            return "["+results.group(1)
-        return ""
+        r = requests.get(lrcUrl, stream=True)
+        return r.content
+        # soup2 = BeautifulSoup(web_data.text, 'lxml')
+        # lrcWord2 = soup2.select('div.ciInfo > script')
+        # pattern = r"\"\[(.*?)\"\;"
+        # results = re.search(pattern, str(lrcWord2))
+        # if results:
+        #     return "["+results.group(1)
+        # return ""
 
     def finished(self):
         self.browser.quit()

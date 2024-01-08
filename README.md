@@ -2,6 +2,7 @@
 
 Qt 5.12.2
 python3.6.5
+chromdriver 74.0.3729.61
 
 
 爬取歌曲
