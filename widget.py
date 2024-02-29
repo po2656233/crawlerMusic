@@ -48,7 +48,7 @@ params = {
 def checkMp3File(fileStr):
     mp3Size = len(fileStr)
     print("开始检测 ", mp3Size)
-    if mp3Size == int(101831) or mp3Size == 0:
+    if mp3Size == int(101831) or mp3Size == 0 or mp3Size == int(102400) or mp3Size == int(101837):
         return False
     return True
 #    if len(fileStr) < 35:
@@ -212,7 +212,7 @@ class Widget(QWidget):
         if 0 == len(indexs):
             if strIndexs.find("，"):
                 indexs = strIndexs.split('，')
-            elif len(indexs) <= 1:
+            elif strIndexs.find(","):
                 indexs = strIndexs.split(',')
         print(len(indexs), '当前数值', indexs, len(strIndexs))
         if 0 < len(strIndexs) and not indexs[0].isdigit():
@@ -232,6 +232,7 @@ class Widget(QWidget):
 #        self.MyTimer.stop()
         self.textEdit.append("\n正在下载歌曲...请勿关闭")
         self.showInfo("启动任务,获取歌曲地址")
+        print( '需下载的歌曲索引', songslist)
         self.work.doing(songslist)
         self.work.start()
 
@@ -302,7 +303,7 @@ class webman(QWidget):
         self.goodMp3Count = 0
 
     def reset(self):
-        self.browser.quit()
+        # self.browser.quit()
         self.count = 0
         self.goodMp3Count = 0
 
@@ -374,7 +375,6 @@ class webman(QWidget):
                     for bl in r.iter_content(chunk_size=1024):
                         if bl:
                             f.write(bl)
-                    f.close()
                 lrcName = os.path.join(os.path.dirname(sys.executable), 'mp3/{}.lrc'.format(songinfo[0]+"-"+songinfo[1]))
                 lrcName = lrcName.replace(" ", "")
                 if os.path.exists(lrcName):
@@ -455,21 +455,22 @@ class Thread(QThread):
         self.setTerminationEnabled(True)
         self.tasks = []
         self.loop = None
-        self.isfirst = True
+        self.isStart = True
 
     def doing(self, list):
         self.needer.reset()
+        self.isStart = True
         self.tasks = [self.needer.get_musicWYY(song) for song in list]
 
     def run(self):
-        if self.isfirst and 0 < len(self.tasks):
+        if self.isStart and 0 < len(self.tasks):
             new_loop = asyncio.new_event_loop()
             asyncio.set_event_loop(new_loop)
             self.loop = asyncio.get_event_loop()
             wait_coro = asyncio.wait(self.tasks)
             self.loop.run_until_complete(wait_coro)
             self.loop.close()
-            self.isfirst = False
+            self.isStart = False
         # tasks = [needer.get_music(song) for song in self.urllist]
         if 0 < len(self.tasks) and len(self.tasks) <= self.needer.count:
             print('task',len(self.tasks), self.needer.count)
