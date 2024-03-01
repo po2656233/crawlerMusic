@@ -233,7 +233,6 @@ class Widget(QWidget):
 #        self.MyTimer.stop()
         self.textEdit.append("\n正在下载歌曲...请勿关闭")
         self.showInfo("启动任务,获取歌曲地址")
-        # print('需下载的歌曲索引', ''.join(songslist))
         self.work.doing(songslist)
         self.work.start()
 
@@ -403,55 +402,38 @@ class webman(QWidget):
 
     # 从爬取歌曲 按歌曲或歌手
     def get_songsLRC(self, singer, songsName):
-        host = "https://www.kangeci.com"
-        keyword = "sel_search_type=1&txt_keywords="+songsName+" "+singer
-        # 删除括号和括号里的内容
-        disword = re.sub(u"\\(.*?\\)|\\{.*?\\}|\\[.*?\\]|\\<.*?\\>", "", keyword)
-        visit = host+"/search?"+disword
+        host = "https://www.igeciku.com"
+        # 第一步 站内查找歌曲
+        tempSearchUrl = "https://zhannei.baidu.com/cse/search?click=1&entry=1&s=2237976389678693530&nsid=&q="
+        visit = tempSearchUrl+songsName+" "+singer
         print("歌词-->", singer, songsName, visit)
         web_data = getDataUrl(visit)
         htmldoc = str(web_data.text)
         htmldoc = htmldoc.replace('<!doctype html>', '', 1)
         soup = BeautifulSoup(htmldoc, 'lxml')
         # soup = BeautifulSoup(htmldoc, 'html.parser')
-        lrcList = soup.select('.geci_title >  h2 > a')
-        if len(lrcList) == 0:
-            print("没有歌词", lrcList)
+        lrcAddrList = soup.select('div > .c-title > a')
+        addrLen = len(lrcAddrList)
+        if addrLen == 0:
+            print("没有歌词", addrLen)
             return ""
-        lrcUrl = ""
-        songIndex = -1
-        lrcLen = len(lrcList)
-        # 查找歌词与歌手最匹配项
-        for i in range(0, lrcLen, 2):
-            lrc = lrcList[i]
-            if lrc.get_text().find(songsName) != -1:
-                lrcUrl = lrc.get('href')
-                songIndex = i
-                if i+1 < lrcLen and lrcList[i+1].get_text().find(singer) != -1:
-                    break
-        if -1 != songIndex:
-            lrcUrl = lrcList[songIndex].get('href')
-            # lrcUrl = '/'+''.join(c for c in lrcList[songIndex].get('href') if c.isdigit())+".lrc"
-            print(lrcList[songIndex].get('href'))
-        if lrcUrl == "":
-            lrcUrl = lrcList[0].get('href')
-            # lrcUrl = '/'+''.join(c for c in lrcList[0].get('href') if c.isdigit())+".lrc"
-        lrcUrl = host+lrcUrl
-        print(songsName+'歌词地址:', lrcUrl)
+        lrcUrl = lrcAddrList[0].get('href')
+        print(songsName+' 歌词地址:', lrcUrl)
         web_data = getDataUrl(lrcUrl)
         htmldoc = str(web_data.text)
-        # print(songsName+'歌词内容:', htmldoc)
-        htmldoc = str(web_data.text)
-        htmldoc = htmldoc.replace('<!doctype html>', '', 1)
-        htmldoc = htmldoc.replace('<br>', '\n')
-        htmldoc = htmldoc.replace('<br/>', '\n')
+        # print(songsName+' 歌词内容:', htmldoc)
         soup = BeautifulSoup(htmldoc, 'lxml')
-        lrcContent = soup.select('.geci_c')
-        if len(lrcContent) == 0:
+        soup.prettify()
+        lrcContent = soup.select('.dip-none > ul ')
+
+        contentLen = len(lrcContent)
+        if contentLen == 0:
             print("没有歌词", lrcContent)
             return ""
-        content = str(lrcContent[1].get_text())
-        # print("实际内容", content)
+        content = ""
+        for p_tag in lrcContent:
+            content += p_tag.get_text()
+        print("实际内容", content)
         return content
 
 
